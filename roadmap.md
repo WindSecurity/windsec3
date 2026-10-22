@@ -10,3 +10,4 @@
 
 - [x] Remove detailed file section and replace paste playground with a suspicious-page extension demo, animated cursor, highlight, remove and replay
 - [x] Set the main tagline to “Secure what your Agent Sees”
+- [x] Remove the default Lovable favicon from the site
