@@ -38,50 +38,51 @@ function BlogPost() {
     <div className="min-h-screen">
       <SiteHeader />
 
-      <main className="mx-auto max-w-5xl px-6">
-        <article className="mx-auto max-w-2xl pt-10">
-          <Link
-            to="/blogs"
-            className="font-mono text-[11px] uppercase tracking-widest text-muted-foreground hover:text-roe"
-          >
-            ← All blogs
+      <main className="relative mx-auto min-h-[calc(100vh-61px)] max-w-6xl overflow-x-clip px-4 sm:px-5">
+        <div
+          className="pointer-events-none absolute inset-x-0 top-0 -z-10 h-[32rem] dot-grid opacity-50"
+          aria-hidden
+        />
+        <article className="mx-auto max-w-4xl pb-16 pt-8 sm:pt-12 md:pb-24">
+          <Link to="/blogs" className="eyebrow transition-colors hover:text-primary">
+            <span aria-hidden>←</span> All blogs
           </Link>
 
-          <div className="mt-8 flex flex-wrap gap-2">
+          <p className="mt-10 font-mono text-[10px] uppercase tracking-widest text-muted-foreground sm:text-xs">
+            Windsec research · {formatPostDate(post.date)} · {post.readMinutes} min read
+          </p>
+          <h1 className="font-display mt-4 text-3xl font-bold leading-tight text-balance sm:text-4xl md:text-5xl">
+            {post.title}
+          </h1>
+          <div className="mt-5 flex flex-wrap gap-2">
             {post.tags.map((tag) => (
               <span
                 key={tag}
-                className="rounded-md bg-cream px-2 py-0.5 font-mono text-[10px] uppercase tracking-widest text-navy-deep"
+                className="border border-border bg-card px-2.5 py-1 font-mono text-[10px] uppercase tracking-wider text-muted-foreground"
               >
                 {tag}
               </span>
             ))}
           </div>
-
-          <h1 className="mt-5 font-display text-4xl font-extrabold leading-[1.08] tracking-tight sm:text-5xl">
-            {post.title}
-          </h1>
-          <p className="mt-5 border-b border-border pb-6 font-mono text-[11px] uppercase tracking-widest text-muted-foreground">
-            By {post.author} · {formatPostDate(post.date)} · {post.readMinutes} min read
+          <p className="mt-6 border-b border-border pb-6 font-mono text-[10px] uppercase tracking-widest text-muted-foreground sm:text-[11px]">
+            By {post.author}
           </p>
 
           <BlogContent blocks={post.blocks} />
 
-          <section className="mt-16 rounded-xl bg-navy p-8 text-cream sm:p-10">
-            <p className="font-mono text-[11px] uppercase tracking-widest text-cream/70">
-              see it yourself
-            </p>
-            <h2 className="mt-3 font-display text-3xl font-bold leading-tight tracking-tight">
+          <section className="mt-14 border border-border bg-card p-5 sm:mt-16 sm:p-8">
+            <p className="eyebrow">see it yourself</p>
+            <h2 className="font-display mt-3 text-2xl font-semibold leading-tight sm:text-3xl">
               Ship with Roe.
             </h2>
-            <p className="mt-3 text-sm text-cream/75">
+            <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
               Roe shows what a page, email, issue, file or image says to your agent that you can't
               see, which attack it matches, and which sensitive actions it's aiming at.
             </p>
             <div className="mt-6">
               <a
-                href="/#install"
-                className="inline-block rounded-md bg-roe px-5 py-2.5 text-sm font-medium text-foam hover:bg-roe-ink"
+                href="/#download"
+                className="inline-block bg-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground transition-transform hover:-translate-y-0.5"
               >
                 Download extension
               </a>
