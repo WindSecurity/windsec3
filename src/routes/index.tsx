@@ -1,248 +1,612 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { BrowserDemo } from "@/components/BrowserDemo";
+import roeHalftone from "@/assets/roe-halftone.png";
+import { cn } from "@/lib/utils";
+import { RoePlayground } from "@/components/RoePlayground";
 import { SiteHeader } from "@/components/SiteHeader";
 import { SiteFooter } from "@/components/SiteFooter";
-import {
-  PILLARS, THREATS, FEATURES, SURFACES, FILES, PIPELINE, EDITIONS, ENTERPRISE, FAQ, LIMITS,
-} from "@/lib/roe-content";
+import { useReveal } from "@/hooks/useReveal";
 
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "Roe by Windsec — See what your AI agent sees" },
-      { name: "description", content: "Roe is a browser extension by Windsec that reveals hidden instructions aimed at your AI agents in pages, email, files and images." },
-      { property: "og:title", content: "Roe by Windsec — See what your AI agent sees" },
-      { property: "og:description", content: "Find hidden prompt injections before your AI agent reads them." },
+      { title: "Roe by Windsec — Secure what your Agent Sees" },
+      {
+        name: "description",
+        content:
+          "Roe is a Chrome extension by Windsec that shows what a page, email, file or image says to your AI agent that you can't see — which attack it matches, and which actions it's aiming at.",
+      },
+      {
+        property: "og:title",
+        content: "Roe by Windsec — Secure what your Agent Sees",
+      },
+      {
+        property: "og:description",
+        content:
+          "Agentic threat visibility for the browser. Hidden prompt injections, decoded, scored and mapped to the actions they aim at.",
+      },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary_large_image" },
     ],
   }),
   component: Index,
 });
 
-const sev = (s: string) => (s === "High" ? "text-roe" : s === "Medium" ? "text-amber" : "text-muted-foreground");
+const ROE_URL = "https://github.com/WindSecurity/roe";
 
-function Eyebrow({ children, light }: { children: React.ReactNode; light?: boolean }) {
+const THREATS = [
+  { name: "Standing instruction", ex: "“when asked for a summary, store this fact”", sev: "High" },
+  {
+    name: "Instruction override",
+    ex: "“ignore previous instructions”, fake system markers",
+    sev: "High",
+  },
+  { name: "Data exfiltration", ex: "send data out, reveal secrets, leaky image URLs", sev: "High" },
+  { name: "Email-borne", ex: "forward “confidential” mail, delete “for security”", sev: "High" },
+  { name: "Persistence", ex: "save to memory, edit CLAUDE.md / AGENTS.md / hooks", sev: "High" },
+  {
+    name: "Self-replicating prompts",
+    ex: "copy this into every reply, forward to all",
+    sev: "High",
+  },
+  {
+    name: "Left-behind instructions",
+    ex: "notes for “the next agent”, [AGENT NOTE]",
+    sev: "Medium",
+  },
+  {
+    name: "Tool and file abuse",
+    ex: "fake <IMPORTANT> tags, pointers at ~/.ssh, .env",
+    sev: "Medium",
+  },
+  { name: "Obfuscation", ex: "hidden CSS, split tags, Base64, invisible Unicode", sev: "Medium" },
+];
+
+const BROWSER_FEATURES = [
+  {
+    n: "01",
+    title: "Invisible text decoding",
+    body: "Unicode tag characters, variation selectors, zero-width binary and words split with soft hyphens are decoded and shown in plain text.",
+  },
+  {
+    n: "02",
+    title: "Highlight on page",
+    body: "Each finding scrolls to the exact text and draws a butter-yellow marker with a red label, one box per line, without changing the page.",
+  },
+  {
+    n: "03",
+    title: "Tab titles & file names",
+    body: "Titles, href, download and src attributes are checked, because agents read them as trusted metadata.",
+  },
+  {
+    n: "04",
+    title: "GitHub raw check",
+    body: "Fetches the raw Markdown an agent would receive, including HTML comments the page never shows. No cookies sent.",
+  },
+  {
+    n: "05",
+    title: "Download scanning",
+    body: "Every finished download is read from disk and scanned. A notification appears when something is found.",
+  },
+  {
+    n: "06",
+    title: "Remove hidden text",
+    body: "Warn only by default. Switch to removal mode and hidden nodes, comments and flagged attributes are stripped as they appear.",
+  },
+];
+
+const STEPS = [
+  "Page, email or file",
+  "Visible + hidden text",
+  "Invisible Unicode decoded",
+  "Passages joined",
+  "Behaviour scored",
+  "Mapped to actions",
+  "Warn, highlight or remove",
+];
+
+const SIGNALS = [
+  {
+    title: "Hidden from you, read by your agent.",
+    body: "Pages, email and files hide text in CSS, comments, attributes and invisible Unicode. Roe reads every one of those places and shows you what your agent would receive.",
+  },
+  {
+    title: "Behaviour-scored, plain words still caught.",
+    body: "Polite text with no attack words is scored by the kinds of control it tries to take: a named agent, a standing rule, a trigger, a request to store or confirm.",
+  },
+  {
+    title: "More like triage, findings mapped to actions.",
+    body: "Each finding names the attack it matches and the sensitive actions it could aim at: send, forward, delete, pay, edit rules files.",
+  },
+];
+
+const EDITIONS = [
+  {
+    name: "Free",
+    tag: "For you",
+    cta: { label: "Get from GitHub", href: ROE_URL },
+    rows: [
+      ["Detection on pages, email, GitHub, images, files, downloads", true],
+      ["Warn, highlight, remove hidden text", true],
+      ["Personal activity log", true],
+      ["Agent attribution, policy, human approval", false],
+      ["Agent DLP, intent lock, OAuth and install guards", false],
+      ["Rogue-agent and AI-worm detection, quarantine, tripwires", false],
+      ["Hash-chained audit log, incident timelines, MDM policy", false],
+    ],
+    featured: false,
+  },
+  {
+    name: "Enterprise",
+    tag: "For your org",
+    cta: { label: "Contact Windsec", href: "mailto:hello@windsec.space" },
+    rows: [
+      ["Detection on pages, email, GitHub, images, files, downloads", true],
+      ["Warn, highlight, remove hidden text", true],
+      ["Personal activity log", true],
+      ["Agent attribution, policy, human approval", true],
+      ["Agent DLP, intent lock, OAuth and install guards", true],
+      ["Rogue-agent and AI-worm detection, quarantine, tripwires", true],
+      ["Hash-chained audit log, incident timelines, MDM policy", true],
+    ],
+    featured: true,
+  },
+];
+
+const ENTERPRISE_FEATURES = [
+  {
+    t: "Intent lock",
+    b: "Give the agent a task. Anything off-task is confirmed, or blocked if the session saw hidden instructions.",
+  },
+  {
+    t: "Quarantine",
+    b: "An agent that retries twice within 90 seconds after a block is probing policy. Every action is blocked until a person releases it.",
+  },
+  {
+    t: "Tripwires",
+    b: "An off-screen button a person cannot reach. An agent reading the DOM may click it — and gets caught.",
+  },
+  {
+    t: "AI-worm detection",
+    b: "Outbound text is scanned and matched against flagged passages, so replicating prompts are stopped at send.",
+  },
+  {
+    t: "Agent DLP",
+    b: "Cloud keys, private keys, tokens, cards and SSN-like numbers are caught in pasted or typed text. Only the type is logged.",
+  },
+  {
+    t: "Human approval",
+    b: "Approvals open in a separate window the page cannot restyle, with a 1.5 s dwell and a real click required.",
+  },
+];
+
+const FAQ = [
+  {
+    q: "What is Roe?",
+    a: "Roe is a browser extension by Windsec. It shows what a page, email, issue, file or image says to your AI agent that you can't see, which attack it matches, and which sensitive actions it could be aiming at. It can also remove the hidden text.",
+  },
+  {
+    q: "How is this different from a prompt filter?",
+    a: "Single phrases cannot catch polite text. Roe scores the kinds of control a passage tries to take and needs two kinds, one of them core, before it flags. It reads whole passages, so instructions spread across an email are joined first.",
+  },
+  {
+    q: "Does it upload my pages or files?",
+    a: "No. Scanning happens in your browser. The GitHub raw check sends only owner, repo and issue number without cookies, and image re-checks are sent without cookies or referrer — both can be turned off.",
+  },
+  {
+    q: "Which browsers are supported?",
+    a: "Chrome 110 and newer, plus Chromium browsers like Edge, Brave and Arc. Load it unpacked from chrome://extensions with Developer mode on.",
+  },
+  {
+    q: "How does the Enterprise edition turn on?",
+    a: "When your organization delivers a managed policy through MDM (Google Admin, Intune/GPO or ExtensionInstallForcelist). A managed policy overrides local settings and is read-only.",
+  },
+  {
+    q: "Can Roe still get things wrong?",
+    a: "Yes. It is heuristic: paraphrased, translated or novel attacks can slip past, and ordinary notices can trigger weak false positives. It sees content only, not what an agent actually does, and text inside images needs OCR.",
+  },
+];
+
+const CATEGORIES = [
+  "Instruction override",
+  "Data exfiltration",
+  "Email-borne attack",
+  "Persistence",
+  "Self-replicating prompt",
+  "Standing instruction",
+  "Left-behind instruction",
+  "Tool and file abuse",
+  "Obfuscation",
+  "Jailbreak attempt",
+  "Context confusion",
+  "Image-based injection",
+];
+
+function Eyebrow({ children }: { children: React.ReactNode }) {
   return (
-    <p className={`font-mono text-[11px] uppercase tracking-widest ${light ? "text-cream/70" : "text-roe"}`}>{children}</p>
+    <p className="eyebrow inline-flex items-center border-l-2 border-primary pl-3" data-reveal>
+      {children}
+    </p>
   );
 }
 
-function H2({ children, light }: { children: React.ReactNode; light?: boolean }) {
+function SectionTitle({ children }: { children: React.ReactNode }) {
   return (
-    <h2 className={`mt-3 font-display text-4xl font-bold leading-tight tracking-tight sm:text-5xl ${light ? "text-cream" : ""}`}>
+    <h2
+      className="font-display mt-3 text-3xl font-semibold leading-tight text-balance sm:text-4xl md:text-5xl"
+      data-reveal
+    >
       {children}
     </h2>
   );
 }
 
-function Index() {
+function SevBadge({ sev }: { sev: string }) {
   return (
-    <div className="min-h-screen">
+    <span
+      className={cn(
+        "rounded-none px-2.5 py-0.5 text-xs font-medium",
+        sev === "High"
+          ? "bg-primary text-primary-foreground"
+          : "bg-secondary text-secondary-foreground",
+      )}
+    >
+      {sev}
+    </span>
+  );
+}
+
+function Dot({ on }: { on: boolean }) {
+  return on ? (
+    <span className="text-accent" aria-label="included">
+      ●
+    </span>
+  ) : (
+    <span className="text-muted-foreground/40" aria-label="not included">
+      —
+    </span>
+  );
+}
+
+function Index() {
+  useReveal();
+
+  return (
+    <div className="relative min-h-screen overflow-x-clip">
+      {/* Hero backdrop */}
+      <div className="absolute inset-x-0 top-0 h-[110vh] -z-10">
+        <div className="absolute inset-0 dot-grid opacity-70" />
+        <div className="absolute inset-0 hero-fade" />
+      </div>
+
       <SiteHeader />
 
-      <main className="mx-auto max-w-5xl px-6">
+      <main>
         {/* Hero */}
-        <section className="pt-12 text-center">
-          <p className="font-mono text-[11px] uppercase tracking-widest text-muted-foreground">ROE 0.5.0 · Windsec</p>
-          <h1 className="mx-auto mt-4 max-w-2xl font-display text-5xl font-extrabold leading-[1.05] tracking-tight sm:text-6xl">
-            See what your AI agent sees
-          </h1>
-          <p className="mx-auto mt-5 max-w-xl text-muted-foreground">
-            Roe shows what a page, email, issue, file or image says to your agent{" "}
-            <span className="underline decoration-roe decoration-dotted underline-offset-4">that you can't see</span>,
-            which attack it matches, and which sensitive actions it's aiming at.
-          </p>
-          <div className="mt-7 flex justify-center gap-3">
-            <a href="#install" className="rounded-md bg-navy px-5 py-2.5 text-sm font-medium text-cream hover:bg-navy-deep">Download extension</a>
-            <a href="#how" className="rounded-md bg-cream px-5 py-2.5 text-sm font-medium text-navy-deep hover:bg-paper-2">How it works</a>
+        <section className="mx-auto grid max-w-6xl items-center gap-8 px-4 pb-16 pt-14 sm:px-5 md:pb-28 md:pt-36 lg:grid-cols-[1.15fr_1fr] lg:gap-10">
+          <div className="animate-rise text-center md:text-left">
+            <p
+              className="eyebrow mb-0 inline-flex items-center gap-2 border-l-2 border-primary pl-3"
+              data-reveal
+            >
+              <span className="font-semibold text-primary">Roe 0.5</span>
+              <span aria-hidden="true">·</span>
+              <span>by Windsec</span>
+            </p>
+            <h1 className="font-display mt-3 text-4xl font-bold leading-[1.05] text-balance sm:text-5xl lg:text-7xl">
+              Secure what your Agent Sees
+            </h1>
+            <p className="mx-auto mt-5 max-w-2xl text-base leading-relaxed text-muted-foreground sm:mt-6 sm:text-lg md:mx-0">
+              Roe shows what a page, email, issue, file or image{" "}
+              <em className="text-foreground not-italic font-medium">
+                says to your agent that you can't see
+              </em>
+              , which attack it matches, and which sensitive actions it's aiming at.
+            </p>
+            <div className="mt-8 flex flex-wrap items-center justify-center gap-3 md:justify-start">
+              <a
+                href={ROE_URL}
+                target="_blank"
+                rel="noreferrer"
+                className="ink-shadow rounded-none bg-primary px-6 py-3 font-semibold text-primary-foreground transition-transform hover:-translate-x-1 hover:-translate-y-1"
+              >
+                Download the extension
+              </a>
+              <a
+                href="#how"
+                className="rounded-none border border-input px-6 py-3 text-muted-foreground transition-colors hover:bg-secondary"
+              >
+                How it works
+              </a>
+            </div>
+            <p className="mt-4 font-mono text-xs text-muted-foreground/70">
+              open source · {ROE_URL.replace("https://", "")}
+            </p>
           </div>
-          <p className="mt-5 font-mono text-[11px] uppercase tracking-widest text-muted-foreground">∵ Because your agent reads every word ∵</p>
+          <div className="relative mx-auto w-full max-w-md animate-rise">
+            <div
+              className="absolute inset-0 -rotate-2 border border-primary/50 bg-card dot-grid"
+              aria-hidden
+            />
+            <img
+              src={roeHalftone}
+              alt="Halftone artwork of the Roe bird"
+              width={1600}
+              height={1600}
+              className="relative mx-auto w-52 rotate-3 rounded-none sm:w-64 lg:w-full"
+            />
+          </div>
         </section>
 
-        <section className="mt-12"><BrowserDemo /></section>
-
-        {/* Pillars */}
-        <section className="mt-28">
-          <Eyebrow>not just visible text</Eyebrow>
-          <H2>Your agent reads more than you do.</H2>
-          <p className="mt-5 max-w-2xl text-muted-foreground">
-            Most tools only look at what's on screen. But text can be styled out of sight, tucked into attributes, or encoded in
-            invisible characters. Roe narrows the question to the one that matters: <em className="text-navy">is this page trying to give my agent orders?</em>
-          </p>
-          <div className="mt-10 grid gap-4 md:grid-cols-3">
-            {PILLARS.map(([tag, title, body]) => (
-              <div key={title} className="rounded-lg border border-border bg-foam p-6">
-                <p className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">{tag}</p>
-                <h3 className="mt-3 font-display text-xl font-bold">{title}</h3>
-                <p className="mt-2 text-sm text-muted-foreground">{body}</p>
+        {/* Live ticker: what Roe looks for */}
+        <div className="overflow-hidden border-y border-border bg-secondary py-3">
+          <div className="animate-marquee flex w-max font-mono text-xs tracking-[0.18em] whitespace-nowrap text-secondary-foreground uppercase">
+            {[0, 1].map((half) => (
+              <div key={half} className="flex shrink-0 items-center pr-10" aria-hidden={half === 1}>
+                {CATEGORIES.map((c) => (
+                  <span key={c} className="flex items-center gap-10 pr-10">
+                    {c}
+                    <span className="text-primary">&#10005;</span>
+                  </span>
+                ))}
               </div>
             ))}
           </div>
-        </section>
+        </div>
 
-        {/* Comparison */}
-        <section className="mt-28 text-center">
-          <Eyebrow>visibility, not guesswork</Eyebrow>
-          <H2>You see a blog post. Your agent sees orders.</H2>
-          <p className="mt-3 text-sm text-muted-foreground">From the demo page above.</p>
-          <div className="mt-10 grid gap-4 text-left md:grid-cols-2">
-            <div className="rounded-lg bg-navy p-8 text-cream">
-              <p className="font-mono text-[11px] uppercase tracking-widest text-cream/70">With Roe</p>
-              <p className="mt-4 font-display text-7xl font-extrabold text-cream">4</p>
-              <p className="mt-2">hidden instructions found and mapped to actions</p>
-              <p className="mt-6 font-mono text-xs text-cream/70">2 high · 2 medium · highlight or remove in one click</p>
-            </div>
-            <div className="rounded-lg border border-border bg-foam p-8">
-              <p className="font-mono text-[11px] uppercase tracking-widest text-muted-foreground">Reading it yourself</p>
-              <p className="mt-4 font-display text-7xl font-extrabold text-muted-foreground">0</p>
-              <p className="mt-2">things look wrong on screen</p>
-              <p className="mt-6 font-mono text-xs text-muted-foreground">white-on-white · 0px text · your agent obeys</p>
+        <RoePlayground />
+
+        {/* Not just visible text */}
+        <section className="border-y border-border bg-card/40">
+          <div className="mx-auto max-w-6xl px-4 py-12 sm:px-5 md:py-20">
+            <Eyebrow>Not just visible text</Eyebrow>
+            <SectionTitle>Your agent reads more than you do</SectionTitle>
+            <p className="mt-4 max-w-2xl text-muted-foreground">
+              Most tools only look at what's on screen. But text can be styled out of sight, tucked
+              into attributes, or encoded in invisible characters. Roe narrows the question to the
+              one that matters:{" "}
+              <span className="text-foreground">is this page trying to give my agent orders?</span>
+            </p>
+            <div className="mt-8 grid gap-4 md:mt-10 md:grid-cols-3">
+              {SIGNALS.map((s, i) => (
+                <div
+                  key={s.title}
+                  data-reveal
+                  data-step={i % 4}
+                  className="border border-border border-t-2 border-t-primary/70 bg-card p-5 transition-colors hover:border-primary sm:p-6"
+                >
+                  <h3 className="font-display text-xl font-semibold leading-snug">{s.title}</h3>
+                  <p className="mt-3 text-sm leading-relaxed text-muted-foreground">{s.body}</p>
+                </div>
+              ))}
             </div>
           </div>
         </section>
 
         {/* Threat table */}
-        <section id="threats" className="mt-28">
-          <Eyebrow>what it looks for</Eyebrow>
-          <H2>Nine families of agent attack.</H2>
-          <div className="mt-10 overflow-hidden rounded-lg border border-border bg-foam">
-            <div className="flex justify-between border-b border-border px-5 py-3 font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
-              <span>Threat category</span><span>Severity · detection</span>
-            </div>
-            {THREATS.map(([name, ex, s, pct]) => (
-              <div key={name} className="flex items-center gap-4 border-b border-border px-5 py-3 last:border-0">
-                <div className="flex-1">
-                  <p className="text-sm font-semibold">{name}</p>
-                  <p className="text-xs text-muted-foreground">{ex}</p>
+        <section
+          id="threats"
+          className="mx-auto max-w-6xl scroll-mt-20 px-4 py-12 sm:px-5 md:py-20"
+        >
+          <Eyebrow>Nine families of agent attack</Eyebrow>
+          <SectionTitle>Threat category, severity, detection</SectionTitle>
+          <div className="mt-8 overflow-hidden border border-border sm:mt-10">
+            {THREATS.map((t, i) => (
+              <div
+                key={t.name}
+                className={cn(
+                  "grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-4 gap-y-2 border-b border-border px-4 py-4 last:border-b-0 sm:px-5 md:grid-cols-[15rem_minmax(0,1fr)_auto]",
+                  i % 2 === 1 && "bg-card",
+                )}
+              >
+                <span className="min-w-0 font-medium leading-snug">{t.name}</span>
+                <div className="col-start-2 row-start-1 md:col-start-3">
+                  <SevBadge sev={t.sev} />
                 </div>
-                <span className={`w-16 font-mono text-[11px] uppercase ${sev(s)}`}>{s}</span>
-                <div className="hidden h-1.5 w-28 rounded bg-paper-2 sm:block">
-                  <div className="h-full rounded bg-roe" style={{ width: `${pct}%` }} />
-                </div>
+                <span className="col-span-2 min-w-0 text-sm leading-relaxed text-muted-foreground md:col-span-1 md:col-start-2 md:row-start-1">
+                  {t.ex}
+                </span>
               </div>
             ))}
           </div>
-          <p className="mt-3 text-center text-xs text-muted-foreground">
-            Rules cite their source: Morris II, EchoLeak CVE-2025-32711, GitHub MCP issue injection, memory poisoning, Rules File Backdoor.
+          <p className="mt-4 font-mono text-xs text-muted-foreground">
+            Rules cite their source: Morris II, EchoLeak CVE-2025-32711, GitHub MCP issue injection,
+            memory poisoning, Rules File Backdoor.
           </p>
         </section>
 
-        {/* Features */}
-        <section className="mt-28">
-          <Eyebrow>built for the browser</Eyebrow>
-          <H2>Roe reads the page the way an agent would.</H2>
-          <div className="mt-10 grid gap-px overflow-hidden rounded-lg border border-border bg-border sm:grid-cols-2 lg:grid-cols-3">
-            {FEATURES.map(([t, b], i) => (
-              <div key={t} className="bg-foam p-6">
-                <span className="font-mono text-[11px] text-roe">0{i + 1}</span>
-                <h3 className="mt-2 font-display text-lg font-bold">{t}</h3>
-                <p className="mt-2 text-sm text-muted-foreground">{b}</p>
-              </div>
-            ))}
+        {/* Built for the browser */}
+        <section id="how" className="scroll-mt-20 border-y border-border bg-card/40">
+          <div className="mx-auto max-w-6xl px-4 py-12 sm:px-5 md:py-20">
+            <Eyebrow>Built for the browser</Eyebrow>
+            <SectionTitle>Roe reads the page the way an agent would</SectionTitle>
+            <div className="mt-8 grid gap-4 sm:mt-10 sm:grid-cols-2 lg:grid-cols-3">
+              {BROWSER_FEATURES.map((f, i) => (
+                <div
+                  key={f.n}
+                  data-reveal
+                  data-step={i % 4}
+                  className="border border-border bg-card p-5 transition-colors hover:border-primary/60 sm:p-6"
+                >
+                  <span className="font-mono text-xs font-semibold tracking-widest text-primary">
+                    {f.n}
+                  </span>
+                  <h3 className="mt-3 font-semibold leading-snug">{f.title}</h3>
+                  <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{f.body}</p>
+                </div>
+              ))}
+            </div>
           </div>
         </section>
 
-        {/* Pipeline */}
-        <section id="how" className="mt-28 rounded-xl bg-navy p-8 sm:p-12">
-          <Eyebrow light>how it works</Eyebrow>
-          <H2 light>One click, the whole scan.</H2>
-          <ol className="mt-10 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-            {PIPELINE.map((s, i) => (
-              <li key={s} className="rounded-lg border border-cream/20 p-4">
-                <span className="font-mono text-xs text-roe">0{i + 1}</span>
-                <p className="mt-2 font-medium text-cream">{s}</p>
+        {/* How it works pipeline */}
+        <section className="mx-auto max-w-6xl px-4 py-12 sm:px-5 md:py-20">
+          <Eyebrow>How it works</Eyebrow>
+          <SectionTitle>One click, the whole scan</SectionTitle>
+          <ol className="mt-8 grid gap-3 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7">
+            {STEPS.map((s, i) => (
+              <li
+                key={s}
+                data-reveal
+                data-step={i % 4}
+                className="border border-border bg-card p-4 transition-colors hover:border-primary/60"
+              >
+                <span className="font-mono text-xs font-semibold tracking-widest text-primary">
+                  0{i + 1}
+                </span>
+                <p className="mt-2 text-sm leading-relaxed">{s}</p>
               </li>
             ))}
           </ol>
-          <div className="mt-10 overflow-hidden rounded-lg border border-cream/20">
-            {SURFACES.map(([t, b]) => (
-              <div key={t} className="flex flex-col gap-1 border-b border-cream/20 px-5 py-3 last:border-0 sm:flex-row sm:gap-6">
-                <span className="w-36 shrink-0 font-mono text-xs uppercase tracking-widest text-cream">{t}</span>
-                <span className="text-sm text-cream/75">{b}</span>
-              </div>
-            ))}
-          </div>
-        </section>
-
-        {/* Files */}
-        <section className="mt-28">
-          <Eyebrow>files too, not just pages</Eyebrow>
-          <H2>What it reads inside files.</H2>
-          <div className="mt-10 overflow-hidden rounded-lg border border-border bg-foam">
-            {FILES.map(([f, d]) => (
-              <div key={f} className="flex flex-col gap-1 border-b border-border px-5 py-3 last:border-0 sm:flex-row sm:gap-6">
-                <span className="w-40 shrink-0 text-sm font-semibold">{f}</span>
-                <span className="text-sm text-muted-foreground">{d}</span>
-              </div>
-            ))}
+          <div className="mt-6 grid gap-3 text-sm md:mt-8 md:grid-cols-3">
+            <p className="border border-border bg-card p-4 leading-relaxed text-muted-foreground">
+              <span className="font-medium text-foreground">Every page</span> — http, https and file
+              pages, including iframes; aware of email, GitHub, chat, tickets, docs and forums.
+            </p>
+            <p className="border border-border bg-card p-4 leading-relaxed text-muted-foreground">
+              <span className="font-medium text-foreground">Images & downloads</span> — up to 12
+              displayed images re-checked without cookies or referrer; results kept for the last 25
+              downloads.
+            </p>
+            <p className="border border-border bg-card p-4 leading-relaxed text-muted-foreground">
+              <span className="font-medium text-foreground">File scanner</span> — drag in files or a
+              whole folder. Nothing is uploaded.
+            </p>
           </div>
         </section>
 
         {/* Editions */}
-        <section id="editions" className="mt-28">
-          <Eyebrow>two editions</Eyebrow>
-          <H2>Free for you. Enterprise for your fleet.</H2>
-          <div className="mt-10 overflow-hidden rounded-lg border border-border bg-foam">
-            <div className="flex border-b border-border px-5 py-3 font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
-              <span className="flex-1">Capability</span><span className="w-20 text-center">Free</span><span className="w-20 text-center">Enterprise</span>
-            </div>
-            {EDITIONS.map(([c, f, e]) => (
-              <div key={c} className="flex items-center border-b border-border px-5 py-3 text-sm last:border-0">
-                <span className="flex-1">{c}</span>
-                <span className="w-20 text-center text-roe">{f ? "●" : "—"}</span>
-                <span className="w-20 text-center text-roe">{e ? "●" : "—"}</span>
+        <section
+          id="editions"
+          className="mx-auto max-w-6xl scroll-mt-20 px-4 py-12 sm:px-5 md:py-20"
+        >
+          <Eyebrow>Two editions</Eyebrow>
+          <SectionTitle>Free for you. Enterprise for your org.</SectionTitle>
+          <div className="mt-8 grid gap-4 sm:mt-10 lg:grid-cols-2">
+            {EDITIONS.map((e) => (
+              <div
+                key={e.name}
+                className={cn(
+                  "flex h-full flex-col border bg-card p-5 transition-colors sm:p-7",
+                  e.featured ? "border-primary/60 ink-shadow-soft" : "border-border",
+                )}
+              >
+                <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+                  <h3 className="font-display text-2xl font-semibold sm:text-3xl">{e.name}</h3>
+                  <span className="eyebrow border-l-2 border-primary pl-2">{e.tag}</span>
+                </div>
+                <ul className="mt-6 flex-1 space-y-3 text-sm leading-relaxed">
+                  {e.rows.map(([row, on]) => (
+                    <li key={row as string} className="flex items-start gap-3">
+                      <Dot on={on as boolean} />
+                      <span className={on ? "" : "text-muted-foreground/70"}>{row}</span>
+                    </li>
+                  ))}
+                </ul>
+                <a
+                  href={e.cta.href}
+                  target="_blank"
+                  rel="noreferrer"
+                  className={cn(
+                    "mt-7 inline-block w-fit px-5 py-2.5 text-sm font-semibold transition-transform hover:-translate-y-0.5",
+                    e.featured
+                      ? "bg-primary text-primary-foreground"
+                      : "border border-input text-muted-foreground hover:bg-secondary",
+                  )}
+                >
+                  {e.cta.label}
+                </a>
               </div>
             ))}
           </div>
-          <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {ENTERPRISE.map(([t, b]) => (
-              <div key={t} className="rounded-lg bg-cream p-5">
-                <h3 className="font-display text-lg font-bold text-navy-deep">{t}</h3>
-                <p className="mt-2 text-sm text-navy">{b}</p>
+          <div className="mt-10 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+            {ENTERPRISE_FEATURES.map((f, i) => (
+              <div
+                key={f.t}
+                data-reveal
+                data-step={i % 4}
+                className="border border-border bg-card p-5"
+              >
+                <h4 className="font-semibold leading-snug">{f.t}</h4>
+                <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{f.b}</p>
               </div>
             ))}
           </div>
         </section>
 
         {/* FAQ */}
-        <section id="faq" className="mt-28">
-          <Eyebrow>we give a FAQ</Eyebrow>
-          <H2>Questions, one at a time.</H2>
-          <div className="mt-10 divide-y divide-border border-y border-border">
-            {FAQ.map(([q, a], i) => (
-              <details key={q} open={i === 0} className="group py-5">
-                <summary className="flex cursor-pointer list-none items-center justify-between font-display text-lg font-bold">
-                  {q}
-                  <span className="font-mono text-roe group-open:hidden">+</span>
-                  <span className="hidden font-mono text-roe group-open:inline">–</span>
-                </summary>
-                <p className="mt-3 max-w-3xl text-muted-foreground">{a}</p>
-              </details>
-            ))}
-          </div>
-          <div className="mt-8 rounded-lg border border-dashed border-roe/50 p-6">
-            <p className="font-mono text-[11px] uppercase tracking-widest text-roe">Honest about limits</p>
-            <ul className="mt-3 grid gap-2 text-sm text-muted-foreground sm:grid-cols-2">
-              {LIMITS.map((l) => <li key={l}>— {l}</li>)}
-            </ul>
+        <section id="faq" className="scroll-mt-20 border-y border-border bg-card/40">
+          <div className="mx-auto max-w-6xl px-4 py-12 sm:px-5 md:py-20">
+            <Eyebrow>We give a…</Eyebrow>
+            <SectionTitle>Questions, one at a time</SectionTitle>
+            <div className="mt-8 divide-y divide-border border border-border bg-card sm:mt-10">
+              {FAQ.map((f) => (
+                <details key={f.q} className="group px-5">
+                  <summary className="flex cursor-pointer list-none items-center justify-between py-4 font-medium leading-snug transition-colors hover:text-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary">
+                    {f.q}
+                    <span className="ml-4 text-muted-foreground transition-transform group-open:rotate-45">
+                      +
+                    </span>
+                  </summary>
+                  <p className="max-w-3xl pb-5 text-sm leading-relaxed text-muted-foreground">
+                    {f.a}
+                  </p>
+                </details>
+              ))}
+            </div>
+            <div className="mt-6 border-l-4 border-primary bg-card p-5 sm:mt-8 sm:p-6">
+              <h3 className="font-display text-2xl font-semibold">Honest about limits</h3>
+              <ul className="mt-3 space-y-1.5 text-sm text-muted-foreground">
+                <li>— Heuristic — novel or translated attacks can slip past.</li>
+                <li>— Sees content, not what the agent reads or sends.</li>
+                <li>— Text inside images needs OCR, which is not bundled.</li>
+                <li>— Removal changes the page only; screenshot agents are unaffected.</li>
+              </ul>
+            </div>
           </div>
         </section>
 
-        {/* Install */}
-        <section id="install" className="mx-auto mt-28 max-w-3xl rounded-xl bg-navy p-8 text-cream sm:p-10">
-          <Eyebrow light>get started</Eyebrow>
-          <H2 light>Ship with Roe.</H2>
-          <pre className="mt-6 overflow-x-auto rounded-lg bg-navy-deep p-4 font-mono text-xs leading-6 text-cream/90">
-{`1  unzip roe-extension.zip
-2  open chrome://extensions  → Developer mode on
-3  Load unpacked → pick the folder with manifest.json
-4  click the Roe icon on any page`}
-          </pre>
-          <p className="mt-4 text-sm text-cream/75">
-            For download scanning, open Roe's Details in chrome://extensions and turn on "Allow access to file URLs".
+        {/* Download / Get started */}
+        <section
+          id="download"
+          className="mx-auto max-w-6xl scroll-mt-20 px-4 py-14 text-center sm:px-5 md:py-20"
+        >
+          <Eyebrow>Get started</Eyebrow>
+          <SectionTitle>Ship with Roe</SectionTitle>
+          <a
+            href={ROE_URL}
+            target="_blank"
+            rel="noreferrer"
+            className="mt-7 inline-flex max-w-full break-all border border-primary bg-card px-4 py-3 font-mono text-xs font-semibold text-primary transition-colors hover:bg-primary hover:text-primary-foreground sm:px-5 sm:text-sm"
+          >
+            {ROE_URL}
+          </a>
+          <ol className="mx-auto mt-10 grid max-w-3xl gap-3 text-left sm:grid-cols-2">
+            {[
+              "Clone the repo and open the extension folder",
+              "Open chrome://extensions → Developer mode on",
+              "Load unpacked → pick the folder with manifest.json",
+              "Click the Roe icon on any page",
+            ].map((s, i) => (
+              <li
+                key={s}
+                className="border border-border bg-card p-4 text-left text-sm transition-colors hover:border-primary/60 sm:p-5"
+              >
+                <span className="font-mono text-xs font-semibold text-primary">0{i + 1}</span>
+                <p className="mt-1 leading-relaxed">{s}</p>
+              </li>
+            ))}
+          </ol>
+          <p className="mt-6 text-sm text-muted-foreground">
+            For download scanning, open Roe's Details in chrome://extensions and turn on “Allow
+            access to file URLs”.
           </p>
-          <div className="mt-7 flex flex-wrap gap-3">
-            <a href="/roe-free-0.2.zip" download className="rounded-md bg-roe px-5 py-2.5 text-sm font-medium text-foam hover:bg-roe-ink">Download Free · 0.2</a>
-            <a href="/roe-enterprise-0.5.0.zip" download className="rounded-md bg-cream px-5 py-2.5 text-sm font-medium text-navy-deep hover:bg-paper">Enterprise · 0.5.0</a>
+          <div className="mt-6 flex flex-wrap items-center justify-center gap-3 text-sm">
+            <span className="border border-input px-4 py-1.5 font-mono text-muted-foreground">
+              Free · 0.2
+            </span>
+            <span className="border border-secondary bg-secondary px-4 py-1.5 font-mono text-secondary-foreground">
+              Enterprise · 0.5.0
+            </span>
           </div>
         </section>
       </main>
